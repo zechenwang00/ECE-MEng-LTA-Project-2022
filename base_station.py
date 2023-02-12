@@ -754,7 +754,7 @@ def terminate_server(ip,port):
 
 if __name__ == '__main__':
  
-    server_ip = '10.49.240.60'
+    server_ip = '10.49.1.249'
    # server_ip = '127.0.0.1'
     server_port = 12002
     
@@ -790,7 +790,7 @@ if __name__ == '__main__':
                     # X button
                     running = False
                     break
-                elif(event.type is MOUSEBUTTONDOWN):
+                elif(event.type == MOUSEBUTTONDOWN):
                     # Mouse click
                     x,y = pygame.mouse.get_pos()
                     
@@ -901,11 +901,11 @@ if __name__ == '__main__':
                             # Down button clicked
                             move_thread = threading.Thread(target=man_control_thread, args=(server_ip,server_port,"down"))
                             move_thread.start()
-                elif(event.type is MOUSEBUTTONUP) and ui.drive == 2:
+                elif(event.type == MOUSEBUTTONUP) and ui.drive == 2:
                     # Stop motors
                     move_thread = threading.Thread(target=man_control_thread, args=(server_ip,server_port,"stop"))
                     move_thread.start()
-                elif(event.type is KEYDOWN) and ui.drive == 1:
+                elif(event.type == KEYDOWN) and ui.drive == 1:
                     if event.key == pygame.K_RETURN:
                         move_thread = threading.Thread(target=wp_control_thread, args=(server_ip,server_port,ui))
                         move_thread.start()

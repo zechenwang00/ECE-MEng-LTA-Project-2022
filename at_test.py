@@ -53,18 +53,24 @@ while True:
 
             # process translation/rotation
             translation_vector = detections[idx].pose_t
-            # rotation_vector  = detections[idx].pose_R
+            rotation_matrix  = detections[idx].pose_R
             # err_vector       = detections[idx].pose_err
             x_translation = translation_vector[0][0]
             y_translation = translation_vector[1][0]
             z_translation = translation_vector[2][0]
+
+            # swap the mathematical x_theta and y_theta, ignore z for now
+            x_theta = math.atan2(-rotation_matrix[2,0], math.sqrt( rotation_matrix[2][1]**2 + rotation_matrix[2][2]**2) )
+            y_theta = math.atan2(rotation_matrix[2,1], rotation_matrix[2,2])
 
             # print output
             print("Detected tag id[", tag_id, ']')
             # print('x center pixel: ', center_x_pixel,' y center pixel: ', center_y_pixel)
             print("x:{:.2f} ".format(x_translation),
                   "y:{:.2f} ".format(y_translation),
-                  "z:{:.2f}" .format(z_translation))
+                  "z:{:.2f}" .format(z_translation),
+                  "x_theta:{:.2f}" .format(x_theta),
+                  "y_theta:{:.2f}" .format(y_theta))
 
             # print("pose_R:", detections[idx].pose_R)
             # print("pose_T:", detections[idx].pose_t)

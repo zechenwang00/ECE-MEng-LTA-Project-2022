@@ -6,11 +6,15 @@ import flightsensor as sensor
 import Apriltag 
 from Apriltag import Detector
 import cv2
+import math
+
 serverPort = 12002
 
 serverSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-serverSocket.bind(('10.49.45.52',serverPort))
+serverSocket.bind(('10.49.1.249',serverPort))
+serverSocket.setblocking(False)
 serverSocket.listen(1)
+return_msg = ''
 
 running = True          # Looping variable
 wp = [0,0,1,0]          # Current waypoint
@@ -43,31 +47,89 @@ TOF_status = [0, 1, 2]
 at_detector = Detector(searchpath=['apriltags/lib', 'apriltags/lib64'],
                            families='tag36h11',
                            nthreads=1,
-                           quad_decimate=1.0,
+                           quad_decimate=2.0,
                            quad_sigma=0.0,
                            refine_edges=1,
                            decode_sharpening=0.25,
                            debug=0)
+# camera info, resolution 640*480
+focal = 528.7
+cx = 320
+cy = 240
+
+# Apriltag vars
+x_translation = 0
+y_translation = 0
+z_translation = 0
+x_theta = 0
+tag_id = 0
+
 cam = cv2.VideoCapture(0)
 cam.set(cv2.CAP_PROP_BUFFERSIZE,1)
+if not cam.isOpened():
+    print("cannot access camera 0")
+    exit()
 print("The server is ready to receive")
 num=0
 try:
     while running:
-        connectionSocket, addr = serverSocket.accept()
-        message = connectionSocket.recv(1024).decode()
-        print("received message: "+message)
+        try:
+            connectionSocket, addr = serverSocket.accept()
+            message = connectionSocket.recv(1024).decode()
+            print("received message: " + message)
+        except:
+            message = None
+
+        # read camera
         ret, img = cam.read()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if num==5:
+            # reset
             num=0
-            tags = at_detector.detect(img)
-            if tags:
-                AT_ID=int(str(tags[0]))
-                print("ID "+ str(tags[0]))
+            print('detecting tags')
+            detections = at_detector.detect(img, estimate_tag_pose=True,
+                                            camera_params=[focal, focal, cx, cy],
+                                            tag_size=0.175)
+            if detections:
+                for idx in range(len(detections)):
+                    # process tag info
+                    tag_id = detections[idx].tag_id
+                    center_x_pixel = detections[idx].center[0]
+                    center_y_pixel = detections[idx].center[1]
+
+                    # process translation/rotation
+                    translation_vector = detections[idx].pose_t
+                    rotation_matrix  = detections[idx].pose_R
+                    # err_vector       = detections[idx].pose_err
+                    x_translation = translation_vector[0][0]
+                    y_translation = translation_vector[1][0]
+                    z_translation = translation_vector[2][0]
+
+                    # swap the mathematical x_theta and y_theta, ignore z for now
+                    x_theta = math.atan2(-rotation_matrix[2, 0],
+                                         math.sqrt(rotation_matrix[2][1] ** 2 + rotation_matrix[2][2] ** 2))
+                    y_theta = math.atan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+
+                    # print output
+                    print("Detected tag id[", tag_id, ']')
+                    # print('x center pixel: ', center_x_pixel,' y center pixel: ', center_y_pixel)
+                    print("x:{:.2f} ".format(x_translation),
+                          "y:{:.2f} ".format(y_translation),
+                          "z:{:.2f}".format(z_translation),
+                          "x_theta:{:.2f}".format(x_theta),
+                          "y_theta:{:.2f}".format(y_theta))
+
+                    # print("pose_R:", detections[idx].pose_R)
+                    # print("pose_T:", detections[idx].pose_t)
+                    # print("pose_err:", detections[idx].pose_err)
+
+                    print("\n")
         num=num+1
         if AT_ang >180 or AT_ang <-180:
             AT_ang=0
+
+        if message is None:
+            continue
         if message == "quit":
             # Close server (debugging)
             return_msg = "quitting"
@@ -109,7 +171,8 @@ try:
             pass
         elif message == "curr wp":
             # Requesting current waypoint
-            return_msg = str(wp[0]) + "," + str(wp[1]) + "," + str(wp[2]) + "," + str(wp[3])
+            return_msg = "{:.2f}".format(x_translation) + "," + "{:.2f}".format(y_translation) + "," + "{:.2f}".format(z_translation) + "," + str(tag_id)
+            print(return_msg)
         elif message.split(' ')[0] == "mode":
             op_mode = int(message.split(' ')[1])
             print("new op mode: " + str(op_mode))
@@ -120,7 +183,7 @@ try:
             # Requesting AprilTag data
             return_msg = str(AT_visible)
             if AT_visible and (AT_ID in AT_coords):
-                return_msg += "," + str(AT_ID) + "," + str(AT_coords[AT_ID][0]) + "," + str(AT_coords[AT_ID][1]) + "," + str(AT_dist) + "," + str(AT_ang)
+                return_msg += "," + str(tag_id) + "," + "{:.2f}".format(x_translation) + "," + "{:.2f}".format(y_translation) + "," + "{:.2f}".format(z_translation) + "," + str(x_theta)
         elif message == "tof":
             TOF_dist=sensor.measurement()
             # Requesting time of flight data
