@@ -5,6 +5,7 @@ import ctypes
 import socket
 import threading
 from numpy import arange
+import numpy as np
 
 ### Globals ###
 
@@ -13,6 +14,8 @@ AT_ID = None        # Visible AprilTag ID or None if no AT visible or ATs disabl
 alt = None          # Last known altitude or None if ATs disabled or not yet found
 coords = None       # Last known position (x,y) or None if ATs disabled or not yet found
 orient = None       # Last known orientation in deg or None if ATs disabled or not yet found
+tag_map = [15, 16, 17, 18, 19]
+tag_curr = 0
 
 # Time of flight distances
 # Left, center, right
@@ -656,15 +659,54 @@ class UI:
         self.err_time = time.time()
         
 def get_AT_thread(ip,port):
-    global AT_ID, coords, alt, orient
+    global AT_ID, coords, alt, orient, tag_curr, tag_map
     server = conn(ip,port)
     AT_info = server.get_AT().split(',')
     AT_visible = bool(AT_info[0])
     if AT_visible:
         AT_ID = int(AT_info[1])
-        coords = [float(AT_info[2]), float(AT_info[3])]
-        alt = float(AT_info[4])
-        orient = -1*float(AT_info[5])
+        coords = [float(AT_info[2]), float(AT_info[4])]     # x, z
+        alt = float(AT_info[3])                             # y
+        orient = float(AT_info[5])
+
+    # navigation message
+    msg = ''
+    x_coord, z_coord = coords
+    z_thresh = 0.6              # 60 cm
+    x_thresh = z_coord * 0.2    # scaling threshold
+
+    if AT_ID == tag_map[tag_curr]:
+        if z_coord > z_thresh:
+            msg = msg + "move forward"
+        else:
+            if tag_curr == len(tag_map) - 1:    # last tag
+                msg = "last tag reached"
+                tag_map.reverse()
+                tag_curr = 0
+
+            else:
+                tag_curr = tag_curr + 1
+                msg = "stop, look for tag ID " + str(tag_map[tag_curr])
+
+        if x_coord < -x_thresh:
+            msg = msg + ", and turn left"
+        elif x_coord > x_thresh:
+            msg = msg + ", and turn right"
+    else:
+        if AT_ID in tag_map:
+            if tag_map.index(AT_ID) > tag_curr:
+                # update tag map
+                tag_curr = tag_map.index(AT_ID)
+                msg = "switch to tag ID " + str(tag_map[tag_curr])
+            else:
+                msg = "found previous tag ID " + str(AT_ID) + ", look for tag " + str(tag_map[tag_curr])
+        else:
+            msg = "invalid tag ID " + str(AT_ID)
+
+    ui.print_err = True
+    ui.err_txt = msg
+    ui.err_time = time.time()
+
         
 def get_TOF_thread(ip,port):
     global TOF_dist, TOF_status

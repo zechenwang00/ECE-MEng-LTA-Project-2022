@@ -27,13 +27,17 @@ print("start detecting")
 while True:
     # read from camera
     ret, frame = cam.read()
+
     if not ret:
         break
 
     # camera info, resolution 640*480
-    focal = 528.7
-    cx = 320
-    cy = 240
+    # focal length in pixels
+    # focal = 528.7 # for pi cam
+    focal = 800     # for usb cam
+    # center of camera in pixels
+    cx = int(cam.get(3)) / 2
+    cy = int(cam.get(4)) / 2
 
 
     # detect on greyscale
@@ -55,9 +59,9 @@ while True:
             translation_vector = detections[idx].pose_t
             rotation_matrix  = detections[idx].pose_R
             # err_vector       = detections[idx].pose_err
-            x_translation = translation_vector[0][0]
-            y_translation = translation_vector[1][0]
-            z_translation = translation_vector[2][0]
+            x_translation =  translation_vector[0][0]
+            y_translation = -translation_vector[1][0]   # y is inverted for usb cam
+            z_translation =  translation_vector[2][0]
 
             # swap the mathematical x_theta and y_theta, ignore z for now
             x_theta = math.atan2(-rotation_matrix[2,0], math.sqrt( rotation_matrix[2][1]**2 + rotation_matrix[2][2]**2) )
