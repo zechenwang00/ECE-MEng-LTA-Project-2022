@@ -41,7 +41,7 @@ TOF_dist = [5.8,1.5,0.1]
 # 0: OK
 # 1: Danger
 # 2: Collision imminent
-TOF_status = [0, 1, 2]
+TOF_status = [0, 0, 0]
 #Apriltag section
 # visualization = True
 at_detector = Detector(searchpath=['apriltags/lib', 'apriltags/lib64'],
@@ -185,6 +185,7 @@ try:
         elif message.split(' ')[0] == "wp":
             # Waypoint command set new waypoint
             wp[:] = [int(i) for i in message.split(' ')[1].split(',')]
+
         elif message == "at":
             # Requesting AprilTag data
             return_msg = str(AT_visible)
@@ -195,6 +196,16 @@ try:
                                                       + "{:.2f}".format(x_theta)
         elif message == "tof":
             TOF_dist=sensor.measurement()
+            # update TOF status
+            warning_dist_red = 700
+            warning_dist_yellow = 1000
+            for idx, reading in enumerate(TOF_dist):
+                if reading < 700:
+                    TOF_status[idx] = 2
+                elif reading < 1000:
+                    TOF_status[idx] = 1
+                else:
+                    TOF_status[idx] = 0
             # Requesting time of flight data
             return_msg = ""
             for n in range(3):

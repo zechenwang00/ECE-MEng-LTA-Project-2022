@@ -12,7 +12,7 @@ import numpy as np
 # Localization
 AT_ID = None        # Visible AprilTag ID or None if no AT visible or ATs disabled
 alt = None          # Last known altitude or None if ATs disabled or not yet found
-coords = None       # Last known position (x,y) or None if ATs disabled or not yet found
+coords = [0,0]       # Last known position (x,z) or None if ATs disabled or not yet found
 orient = None       # Last known orientation in deg or None if ATs disabled or not yet found
 tag_map = [15, 16, 17, 18, 19]
 tag_curr = 0
@@ -59,8 +59,8 @@ class conn:
         else:
             raise Exception("Acceleration direction not recognized")
             
-    def send_wp(self, x, y, z, theta):
-        str = "wp " + x + "," + y + "," + z + "," + theta
+    def send_wp(self, msg):
+        str = "wp " + msg
         self.clientSocket.send(str.encode())
         
     def send_drive(self,mode):
@@ -129,7 +129,7 @@ class UI:
     
     # AprilTag localization table number of rows & columns
     AT_table_rows = 3
-    AT_table_cols = 4
+    AT_table_cols = 5
     
     # Localization information
     # Center of "Location" title text
@@ -348,8 +348,8 @@ class UI:
         
         global AT_ID, coords, alt, orient
         title = "AprilTag Robot Localization"
-        headers = ["Visible ID", "Position", "Altitude", "Orientation"]
-        data = [AT_ID, coords, alt, orient]
+        headers = ["Curr ID", "X Dist", "Z Dist", "Altitude", "Orient"]
+        data = [AT_ID, coords[0], coords[1], alt, orient]
         
         self.__draw_table(self.AT_table_x, self.AT_table_y, self.AT_table_rows, self.AT_table_cols, self.AT_table_size, title, headers, data, self.AT_en, False)
             
@@ -469,7 +469,7 @@ class UI:
             theta_color = self.TXT_COLOR_INACTIVE
         
         # Draw title
-        title_surf = self.font.render("Waypoint to Send", True, self.BLUE_MED)
+        title_surf = self.font.render("New Tag Sequence to Send", True, self.BLUE_MED)
         title_rect = title_surf.get_rect(center=((self.wp_y_x + self.wp_z_x + self.wp_tb_size[0])/2,self.wp_x_y-30))
         self.screen.blit(title_surf, title_rect)
         
@@ -477,51 +477,51 @@ class UI:
         label_y = self.wp_x_y - 10
         
         # Draw x textbox
-        x_surf = pygame.Surface(self.wp_tb_size)
+        x_surf = pygame.Surface((150,20))
         x_surf.fill(x_color)
         x_txt_surf = self.font.render(self.wp_x_txt, True, self.BLACK)
-        x_rect = pygame.Rect((self.wp_x_x,self.wp_x_y), self.wp_tb_size)
-        x_label_surf = self.font.render("x", True, self.BLACK)
-        x_label_rect = x_label_surf.get_rect(center=(self.wp_x_x + self.wp_tb_size[0]/2, label_y))
-        self.screen.blit(x_surf,x_rect)
+        x_rect = pygame.Rect((self.wp_x_x+40,self.wp_x_y), self.wp_tb_size)
+        # x_label_surf = self.font.render("x", True, self.BLACK)
+        # x_label_rect = x_label_surf.get_rect(center=(self.wp_x_x + self.wp_tb_size[0]/2, label_y))
+        self.screen.blit(x_surf,    x_rect)
         self.screen.blit(x_txt_surf,x_rect)
-        self.screen.blit(x_label_surf,x_label_rect)
+        # self.screen.blit(x_label_surf,x_label_rect)
         
-        # Draw y textbox
-        y_surf = pygame.Surface(self.wp_tb_size)
-        y_surf.fill(y_color)
-        y_txt_surf = self.font.render(self.wp_y_txt, True, self.BLACK)
-        y_rect = pygame.Rect((self.wp_y_x,self.wp_y_y), self.wp_tb_size)
-        y_label_surf = self.font.render("y", True, self.BLACK)
-        y_label_rect = y_label_surf.get_rect(center=(self.wp_y_x + self.wp_tb_size[0]/2, label_y))
-        self.screen.blit(y_surf,y_rect)
-        self.screen.blit(y_txt_surf,y_rect)
-        self.screen.blit(y_label_surf,y_label_rect)
-        
-        # Draw z textbox
-        z_surf = pygame.Surface(self.wp_tb_size)
-        z_surf.fill(z_color)
-        z_txt_surf = self.font.render(self.wp_z_txt, True, self.BLACK)
-        z_rect = pygame.Rect((self.wp_z_x,self.wp_z_y), self.wp_tb_size)
-        z_label_surf = self.font.render("z", True, self.BLACK)
-        z_label_rect = z_label_surf.get_rect(center=(self.wp_z_x + self.wp_tb_size[0]/2, label_y))
-        self.screen.blit(z_surf,z_rect)
-        self.screen.blit(z_txt_surf,z_rect)
-        self.screen.blit(z_label_surf,z_label_rect)
-        
-        # Draw theta textbox
-        theta_surf = pygame.Surface(self.wp_tb_size)
-        theta_surf.fill(theta_color)
-        theta_txt_surf = self.font.render(self.wp_theta_txt, True, self.BLACK)
-        theta_rect = pygame.Rect((self.wp_theta_x,self.wp_theta_y), self.wp_tb_size)
-        theta_label_surf = self.font.render(u"\u03B8", True, self.BLACK)
-        theta_label_rect = theta_label_surf.get_rect(center=(self.wp_theta_x + self.wp_tb_size[0]/2, label_y))
-        self.screen.blit(theta_surf,theta_rect)
-        self.screen.blit(theta_txt_surf,theta_rect)
-        self.screen.blit(theta_label_surf,theta_label_rect)
+        # # Draw y textbox
+        # y_surf = pygame.Surface(self.wp_tb_size)
+        # y_surf.fill(y_color)
+        # y_txt_surf = self.font.render(self.wp_y_txt, True, self.BLACK)
+        # y_rect = pygame.Rect((self.wp_y_x,self.wp_y_y), self.wp_tb_size)
+        # y_label_surf = self.font.render("y", True, self.BLACK)
+        # y_label_rect = y_label_surf.get_rect(center=(self.wp_y_x + self.wp_tb_size[0]/2, label_y))
+        # self.screen.blit(y_surf,y_rect)
+        # self.screen.blit(y_txt_surf,y_rect)
+        # self.screen.blit(y_label_surf,y_label_rect)
+        #
+        # # Draw z textbox
+        # z_surf = pygame.Surface(self.wp_tb_size)
+        # z_surf.fill(z_color)
+        # z_txt_surf = self.font.render(self.wp_z_txt, True, self.BLACK)
+        # z_rect = pygame.Rect((self.wp_z_x,self.wp_z_y), self.wp_tb_size)
+        # z_label_surf = self.font.render("z", True, self.BLACK)
+        # z_label_rect = z_label_surf.get_rect(center=(self.wp_z_x + self.wp_tb_size[0]/2, label_y))
+        # self.screen.blit(z_surf,z_rect)
+        # self.screen.blit(z_txt_surf,z_rect)
+        # self.screen.blit(z_label_surf,z_label_rect)
+        #
+        # # Draw theta textbox
+        # theta_surf = pygame.Surface(self.wp_tb_size)
+        # theta_surf.fill(theta_color)
+        # theta_txt_surf = self.font.render(self.wp_theta_txt, True, self.BLACK)
+        # theta_rect = pygame.Rect((self.wp_theta_x,self.wp_theta_y), self.wp_tb_size)
+        # theta_label_surf = self.font.render(u"\u03B8", True, self.BLACK)
+        # theta_label_rect = theta_label_surf.get_rect(center=(self.wp_theta_x + self.wp_tb_size[0]/2, label_y))
+        # self.screen.blit(theta_surf,theta_rect)
+        # self.screen.blit(theta_txt_surf,theta_rect)
+        # self.screen.blit(theta_label_surf,theta_label_rect)
         
         # Draw send button
-        text_surf = self.font.render("Send", True, self.WHITE)
+        text_surf = self.font.render("Set", True, self.WHITE)
         text_rect = text_surf.get_rect(center=(self.wp_send_x + self.wp_tb_size[0]/2,self.wp_send_y + self.wp_tb_size[1]/2))
         button_surf = pygame.Surface(self.wp_tb_size)
         button_surf.fill(self.GREEN)
@@ -531,41 +531,55 @@ class UI:
     def __draw_curr_wp(self):
         
         # Draw title
-        title_surf = self.font.render("Current Waypoint", True, self.BLUE_MED)
+        title_surf = self.font.render("Current Tag Sequence", True, self.BLUE_MED)
         title_rect = title_surf.get_rect(center=((self.curr_wp_y_x + self.curr_wp_z_x)/2,self.curr_wp_x_y-40))
         self.screen.blit(title_surf, title_rect)
         
-        # Draw x
-        title_surf = self.font.render("x", True, self.BLACK)
-        title_rect = title_surf.get_rect(center=(self.curr_wp_x_x,self.curr_wp_x_y-20))
+
+        msg = ''
+        for i in range(len(tag_map)):
+            if i == tag_curr:
+                msg = msg + '['
+            msg = msg + str(tag_map[i])
+            if i == tag_curr:
+                msg = msg + ']'
+            msg = msg + ' '
+
+        title_surf = self.font.render(msg, True, self.BLACK)
+        title_rect = title_surf.get_rect(center=(self.curr_wp_x_x+100,self.curr_wp_x_y-20))
         self.screen.blit(title_surf, title_rect)
-        txt_surf= self.font.render(self.curr_wp_x, True, self.BLACK)
-        txt_rect = txt_surf.get_rect(center=(self.curr_wp_x_x,self.curr_wp_x_y))
-        self.screen.blit(txt_surf, txt_rect)
+
+        # # Draw x
+        # title_surf = self.font.render("x", True, self.BLACK)
+        # title_rect = title_surf.get_rect(center=(self.curr_wp_x_x,self.curr_wp_x_y-20))
+        # self.screen.blit(title_surf, title_rect)
+        # txt_surf= self.font.render(self.curr_wp_x, True, self.BLACK)
+        # txt_rect = txt_surf.get_rect(center=(self.curr_wp_x_x,self.curr_wp_x_y))
+        # self.screen.blit(txt_surf, txt_rect)
         
-        # Draw y
-        title_surf = self.font.render("y", True, self.BLACK)
-        title_rect = title_surf.get_rect(center=(self.curr_wp_y_x,self.curr_wp_y_y-20))
-        self.screen.blit(title_surf, title_rect)
-        txt_surf= self.font.render(self.curr_wp_y, True, self.BLACK)
-        txt_rect = txt_surf.get_rect(center=(self.curr_wp_y_x,self.curr_wp_y_y))
-        self.screen.blit(txt_surf, txt_rect)
-        
-        # Draw z
-        title_surf = self.font.render("z", True, self.BLACK)
-        title_rect = title_surf.get_rect(center=(self.curr_wp_z_x,self.curr_wp_z_y-20))
-        self.screen.blit(title_surf, title_rect)
-        txt_surf= self.font.render(self.curr_wp_z, True, self.BLACK)
-        txt_rect = txt_surf.get_rect(center=(self.curr_wp_z_x,self.curr_wp_z_y))
-        self.screen.blit(txt_surf, txt_rect)
-        
-        # Draw theta
-        title_surf = self.font.render(u"\u03B8", True, self.BLACK)
-        title_rect = title_surf.get_rect(center=(self.curr_wp_theta_x,self.curr_wp_theta_y-20))
-        self.screen.blit(title_surf, title_rect)
-        txt_surf= self.font.render(self.curr_wp_theta, True, self.BLACK)
-        txt_rect = txt_surf.get_rect(center=(self.curr_wp_theta_x,self.curr_wp_theta_y))
-        self.screen.blit(txt_surf, txt_rect)
+        # # Draw y
+        # title_surf = self.font.render("y", True, self.BLACK)
+        # title_rect = title_surf.get_rect(center=(self.curr_wp_y_x,self.curr_wp_y_y-20))
+        # self.screen.blit(title_surf, title_rect)
+        # txt_surf= self.font.render(self.curr_wp_y, True, self.BLACK)
+        # txt_rect = txt_surf.get_rect(center=(self.curr_wp_y_x,self.curr_wp_y_y))
+        # self.screen.blit(txt_surf, txt_rect)
+        #
+        # # Draw z
+        # title_surf = self.font.render("z", True, self.BLACK)
+        # title_rect = title_surf.get_rect(center=(self.curr_wp_z_x,self.curr_wp_z_y-20))
+        # self.screen.blit(title_surf, title_rect)
+        # txt_surf= self.font.render(self.curr_wp_z, True, self.BLACK)
+        # txt_rect = txt_surf.get_rect(center=(self.curr_wp_z_x,self.curr_wp_z_y))
+        # self.screen.blit(txt_surf, txt_rect)
+        #
+        # # Draw theta
+        # title_surf = self.font.render(u"\u03B8", True, self.BLACK)
+        # title_rect = title_surf.get_rect(center=(self.curr_wp_theta_x,self.curr_wp_theta_y-20))
+        # self.screen.blit(title_surf, title_rect)
+        # txt_surf= self.font.render(self.curr_wp_theta, True, self.BLACK)
+        # txt_rect = txt_surf.get_rect(center=(self.curr_wp_theta_x,self.curr_wp_theta_y))
+        # self.screen.blit(txt_surf, txt_rect)
 
     def draw_error(self,text):
         self.screen.fill(self.WHITE)
@@ -735,13 +749,18 @@ def wp_control_thread(ip,port,ui):
     
     # Fill in default values for blank coordinates
     if x == '':
-        x = '0'
-    if y == '':
-        y = '0'
-    if z == '':
-        z = '1'
-    if theta == '':
-        theta = '0'
+        return
+    else:
+        server = conn(ip, port)
+        server.send_wp(x)
+        server.close()
+        # x = '0'
+    # if y == '':
+    #     y = '0'
+    # if z == '':
+    #     z = '1'
+    # if theta == '':
+    #     theta = '0'
         
     # Clear textbox selections
     ui.wp_x_active = False
@@ -749,34 +768,34 @@ def wp_control_thread(ip,port,ui):
     ui.wp_z_active = False
     ui.wp_theta_active = False
     
-    # Check that all entries are floats before sending
-    if str_is_num(x):
-        if str_is_num(y):
-            if str_is_num(z):
-                if str_is_num(theta):
-                    server = conn(ip,port)
-                    server.send_wp(x, y, z, theta)
-                    server.close()
-                else:
-                    ui.print_err = True
-                    ui.err_txt = u"\u03B8" + " value is not a number"
-                    ui.err_time = time.time()
-                    ui.wp_theta_active = True
-            else:
-                ui.print_err = True
-                ui.err_txt = "z value is not a number"
-                ui.err_time = time.time()
-                ui.wp_z_active = True
-        else:
-            ui.print_err = True
-            ui.err_txt = "y value is not a number"
-            ui.err_time = time.time()
-            ui.wp_y_active = True
-    else:
-        ui.print_err = True
-        ui.err_txt = "x value is not a number"
-        ui.err_time = time.time()
-        ui.wp_x_active = True
+    # # Check that all entries are floats before sending
+    # if str_is_num(x):
+    #     if str_is_num(y):
+    #         if str_is_num(z):
+    #             if str_is_num(theta):
+    #                 server = conn(ip,port)
+    #                 server.send_wp(x, y, z, theta)
+    #                 server.close()
+    #             else:
+    #                 ui.print_err = True
+    #                 ui.err_txt = u"\u03B8" + " value is not a number"
+    #                 ui.err_time = time.time()
+    #                 ui.wp_theta_active = True
+    #         else:
+    #             ui.print_err = True
+    #             ui.err_txt = "z value is not a number"
+    #             ui.err_time = time.time()
+    #             ui.wp_z_active = True
+    #     else:
+    #         ui.print_err = True
+    #         ui.err_txt = "y value is not a number"
+    #         ui.err_time = time.time()
+    #         ui.wp_y_active = True
+    # else:
+    #     ui.print_err = True
+    #     ui.err_txt = "x value is not a number"
+    #     ui.err_time = time.time()
+    #     ui.wp_x_active = True
         
 def get_wp_thread(ip,port,ui):
     server = conn(ip,port)
@@ -898,20 +917,39 @@ if __name__ == '__main__':
                         drive_thread.start()    
                     elif ui.drive == 1:
                         # Waypoint drive mode
-                        if x > ui.wp_x_x and x < ui.wp_x_x + ui.wp_tb_size[0] and y > ui.wp_x_y and y < ui.wp_x_y + ui.wp_tb_size[1]:
+                        if x > ui.wp_x_x + 40 and x < ui.wp_x_x + 140 + ui.wp_tb_size[0] and y > ui.wp_x_y and y < ui.wp_x_y + ui.wp_tb_size[1]:
                             # Waypoint x input clicked
                             ui.wp_x_active = True
-                        elif x > ui.wp_y_x and x < ui.wp_y_x + ui.wp_tb_size[0] and y > ui.wp_y_y and y < ui.wp_y_y + ui.wp_tb_size[1]:
-                            # Waypoint y input clicked
-                            ui.wp_y_active = True
-                        elif x > ui.wp_z_x and x < ui.wp_z_x + ui.wp_tb_size[0] and y > ui.wp_z_y and y < ui.wp_z_y + ui.wp_tb_size[1]:
-                            # Waypoint z input clicked
-                            ui.wp_z_active = True
-                        elif x > ui.wp_theta_x and x < ui.wp_theta_x + ui.wp_tb_size[0] and y > ui.wp_theta_y and y < ui.wp_theta_y + ui.wp_tb_size[1]:
-                            # Waypoint theta input clicked
-                            ui.wp_theta_active = True
+                        # elif x > ui.wp_y_x and x < ui.wp_y_x + ui.wp_tb_size[0] and y > ui.wp_y_y and y < ui.wp_y_y + ui.wp_tb_size[1]:
+                        #     # Waypoint y input clicked
+                        #     ui.wp_y_active = True
+                        # elif x > ui.wp_z_x and x < ui.wp_z_x + ui.wp_tb_size[0] and y > ui.wp_z_y and y < ui.wp_z_y + ui.wp_tb_size[1]:
+                        #     # Waypoint z input clicked
+                        #     ui.wp_z_active = True
+                        # elif x > ui.wp_theta_x and x < ui.wp_theta_x + ui.wp_tb_size[0] and y > ui.wp_theta_y and y < ui.wp_theta_y + ui.wp_tb_size[1]:
+                        #     # Waypoint theta input clicked
+                        #     ui.wp_theta_active = True
                         elif x > ui.wp_send_x and x < ui.wp_send_x + ui.wp_tb_size[0] and y > ui.wp_send_y and y < ui.wp_send_y + ui.wp_tb_size[1]:
                             # Send waypoint clicked
+                            # set current tag map
+                            try:
+                                tag_map_temp = [int(i) for i in ui.wp_x_txt.split(',')]
+                                if min(tag_map_temp) < 0 or max(tag_map_temp) > 20:
+                                    ui.print_err = True
+                                    ui.err_txt = "check your input"
+                                    ui.err_time = time.time()
+                                    ui.wp_z_active = True
+                                else:
+                                    tag_map = tag_map_temp
+                                    tag_curr = 0
+                            except:
+                                ui.print_err = True
+                                ui.err_txt = "check your input"
+                                ui.err_time = time.time()
+                                ui.wp_z_active = True
+
+
+                            # send something?
                             move_thread = threading.Thread(target=wp_control_thread, args=(server_ip,server_port,ui))
                             move_thread.start()
                             time.sleep(0.02)
