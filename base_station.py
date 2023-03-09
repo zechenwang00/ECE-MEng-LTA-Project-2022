@@ -16,6 +16,8 @@ coords = [0,0]       # Last known position (x,z) or None if ATs disabled or not 
 orient = None       # Last known orientation in deg or None if ATs disabled or not yet found
 tag_map = [15, 16, 17, 18, 19]
 tag_curr = 0
+AT_seq = -1
+AT_visible = False
 
 # Time of flight distances
 # Left, center, right
@@ -673,15 +675,22 @@ class UI:
         self.err_time = time.time()
         
 def get_AT_thread(ip,port):
-    global AT_ID, coords, alt, orient, tag_curr, tag_map
+    global AT_ID, coords, alt, orient, tag_curr, tag_map, AT_seq, AT_visible
     server = conn(ip,port)
     AT_info = server.get_AT().split(',')
-    AT_visible = bool(AT_info[0])
-    if AT_visible:
-        AT_ID = int(AT_info[1])
-        coords = [float(AT_info[2]), float(AT_info[4])]     # x, z
-        alt = float(AT_info[3])                             # y
-        orient = float(AT_info[5])
+    # AT_visible = bool(AT_info[0])
+    # if AT_visible:
+    AT_ID = int(AT_info[1])
+    coords = [float(AT_info[2]), float(AT_info[4])]     # x, z
+    alt = float(AT_info[3])                             # y
+    orient = float(AT_info[5])
+    AT_seq_recv = int(AT_info[6])
+    if AT_seq >= AT_seq_recv:
+        AT_visible = False
+    else:
+        AT_visible = True
+        AT_seq = AT_seq_recv
+
 
     # navigation message
     msg = ''
@@ -689,33 +698,49 @@ def get_AT_thread(ip,port):
     z_thresh = 0.6              # 60 cm
     x_thresh = z_coord * 0.2    # scaling threshold
 
-    if AT_ID == tag_map[tag_curr]:
-        if z_coord > z_thresh:
-            msg = msg + "move forward"
-        else:
-            if tag_curr == len(tag_map) - 1:    # last tag
-                msg = "last tag reached"
-                tag_map.reverse()
-                tag_curr = 0
-
+    if AT_visible:
+        if AT_ID == tag_map[tag_curr]:
+            if z_coord > z_thresh:
+                msg = msg + "move forward"
+                move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "forward"))
+                move_thread.start()
             else:
-                tag_curr = tag_curr + 1
-                msg = "stop, look for tag ID " + str(tag_map[tag_curr])
+                if tag_curr == len(tag_map) - 1:    # last tag
+                    msg = "last tag reached"
+                    tag_map.reverse()
+                    tag_curr = 0
+                    move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
+                    move_thread.start()
 
-        if x_coord < -x_thresh:
-            msg = msg + ", and turn left"
-        elif x_coord > x_thresh:
-            msg = msg + ", and turn right"
+                else:
+                    tag_curr = tag_curr + 1
+                    msg = "stop, look for tag ID " + str(tag_map[tag_curr])
+                    move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
+                    move_thread.start()
+
+            if x_coord < -x_thresh:
+                msg = msg + ", and turn left"
+                move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "left"))
+                move_thread.start()
+            elif x_coord > x_thresh:
+                msg = msg + ", and turn right"
+                move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "right"))
+                move_thread.start()
+        else:
+            if AT_ID in tag_map:
+                if tag_map.index(AT_ID) > tag_curr:
+                    # update tag map
+                    tag_curr = tag_map.index(AT_ID)
+                    msg = "switch to tag ID " + str(tag_map[tag_curr])
+                else:
+                    msg = "found previous tag ID " + str(AT_ID) + ", look for tag " + str(tag_map[tag_curr])
+            else:
+                msg = "invalid tag ID " + str(AT_ID)
+
     else:
-        if AT_ID in tag_map:
-            if tag_map.index(AT_ID) > tag_curr:
-                # update tag map
-                tag_curr = tag_map.index(AT_ID)
-                msg = "switch to tag ID " + str(tag_map[tag_curr])
-            else:
-                msg = "found previous tag ID " + str(AT_ID) + ", look for tag " + str(tag_map[tag_curr])
-        else:
-            msg = "invalid tag ID " + str(AT_ID)
+        msg = "AT not detected, seq = " + str(AT_seq)
+        move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
+        move_thread.start()
 
     ui.print_err = True
     ui.err_txt = msg

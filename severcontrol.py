@@ -31,6 +31,7 @@ AT_coords = {1:[0,0],\
              4:[2,0],\
              7:[0,1],\
              6:[-1,-1]}   # Dictionary mapping AprilTag IDs to known (x,y) coordinates
+AT_seq = 0
              
 # Time of flight distances
 # Left, center, right
@@ -97,6 +98,8 @@ try:
                                             camera_params=[focal, focal, cx, cy],
                                             tag_size=0.175)
             if detections:
+                # increment AT sequence number
+                AT_seq = AT_seq + 1
                 for idx in range(len(detections)):
                     # process tag info
                     tag_id = detections[idx].tag_id
@@ -193,7 +196,8 @@ try:
                 return_msg += "," + str(tag_id) + "," + "{:.2f}".format(x_translation) + "," \
                                                       + "{:.2f}".format(y_translation) + "," \
                                                       + "{:.2f}".format(z_translation) + "," \
-                                                      + "{:.2f}".format(x_theta)
+                                                      + "{:.2f}".format(x_theta) + "," \
+                                                      + "{:d}".format(AT_seq)
         elif message == "tof":
             TOF_dist=sensor.measurement()
             # update TOF status
