@@ -14,7 +14,8 @@ AT_ID = None        # Visible AprilTag ID or None if no AT visible or ATs disabl
 alt = None          # Last known altitude or None if ATs disabled or not yet found
 coords = [0,0]       # Last known position (x,z) or None if ATs disabled or not yet found
 orient = None       # Last known orientation in deg or None if ATs disabled or not yet found
-tag_map = [15, 16, 17, 18, 19]
+tag_map = [1, 2, 3, 4, 5]
+tag_pos = [1, 0, 1, 1, 0]        # -1 = left, 0 = back, 1 = right
 tag_curr = 0
 AT_seq = -1
 AT_visible = False
@@ -695,10 +696,27 @@ def get_AT_thread(ip,port):
     # navigation message
     msg = ''
     x_coord, z_coord = coords
-    z_thresh = 0.6              # 60 cm
-    x_thresh = z_coord * 0.2    # scaling threshold
+    z_thresh = 0.7                  # 70 cm
+    x_thresh = z_coord * 0.2        # scaling threshold
 
-    if AT_visible:
+    collision = max(TOF_status)     # any nonzero value in the list indicates a possible collision
+
+    if collision > 0:
+        # obstacle avoidance
+        if collision == 2:
+            # at least one is red, stop
+            move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
+            move_thread.start()
+        elif TOF_status[0] == 1:
+            # left ToF is yellow, turn right
+            move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "right"))
+            move_thread.start()
+        elif TOF_status[2] == 1:
+            # right ToF is yellow, turn left
+            move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "left"))
+            move_thread.start()
+
+    elif AT_visible:
         if AT_ID == tag_map[tag_curr]:
             if z_coord > z_thresh:
                 msg = msg + "move forward"

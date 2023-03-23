@@ -205,11 +205,11 @@ try:
             warning_dist_yellow = 1000
             for idx, reading in enumerate(TOF_dist):
                 if reading < 700:
-                    TOF_status[idx] = 2
+                    TOF_status[idx] = 2     # red
                 elif reading < 1000:
-                    TOF_status[idx] = 1
+                    TOF_status[idx] = 1     # yellow
                 else:
-                    TOF_status[idx] = 0
+                    TOF_status[idx] = 0     # green
             # Requesting time of flight data
             return_msg = ""
             for n in range(3):
