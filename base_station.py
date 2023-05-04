@@ -14,8 +14,8 @@ AT_ID = None        # Visible AprilTag ID or None if no AT visible or ATs disabl
 alt = None          # Last known altitude or None if ATs disabled or not yet found
 coords = [0,0]       # Last known position (x,z) or None if ATs disabled or not yet found
 orient = None       # Last known orientation in deg or None if ATs disabled or not yet found
-tag_map = [1, 2, 3, 4, 5]
-tag_pos = [1, 0, 1, 1, 0]        # -1 = left, 0 = back, 1 = right
+tag_map = [0, 1, 2, 3, 4, 5]
+tag_pos = [0, 1, 0, 1, 1, 0]        # -1 = left, 0 = back, 1 = right
 tag_curr = 0
 AT_seq = -1
 AT_visible = False
@@ -676,7 +676,7 @@ class UI:
         self.err_time = time.time()
         
 def get_AT_thread(ip,port):
-    global AT_ID, coords, alt, orient, tag_curr, tag_map, AT_seq, AT_visible
+    global AT_ID, coords, alt, orient, tag_curr, tag_pos, tag_map, AT_seq, AT_visible
     server = conn(ip,port)
     AT_info = server.get_AT().split(',')
     # AT_visible = bool(AT_info[0])
@@ -699,7 +699,8 @@ def get_AT_thread(ip,port):
     z_thresh = 0.7                  # 70 cm
     x_thresh = z_coord * 0.2        # scaling threshold
 
-    collision = max(TOF_status)     # any nonzero value in the list indicates a possible collision
+    collision = 0 # max(TOF_status)     # any nonzero value in the list indicates a possible collision
+                                        # set to 0 for testing
 
     if collision > 0:
         # obstacle avoidance
@@ -719,23 +720,36 @@ def get_AT_thread(ip,port):
     elif AT_visible:
         if AT_ID == tag_map[tag_curr]:
             if z_coord > z_thresh:
+                # target not reached
                 msg = msg + "move forward"
                 move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "forward"))
                 move_thread.start()
             else:
-                if tag_curr == len(tag_map) - 1:    # last tag
+                if tag_curr == len(tag_map) - 1:
+                    # last tag reached
                     msg = "last tag reached"
                     tag_map.reverse()
+                    tag_pos.reverse()
+                    tag_pos = [-x for x in tag_pos]
                     tag_curr = 0
                     move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
                     move_thread.start()
 
                 else:
+                    # intermediate tag reached, look for next one
                     tag_curr = tag_curr + 1
                     msg = "stop, look for tag ID " + str(tag_map[tag_curr])
+                    if tag_pos[tag_curr] == -1:
+                        msg = msg + " (left)"
+                    elif tag_pos[tag_curr] == 0:
+                        msg = msg + " (back)"
+                    elif tag_pos[tag_curr] == 1:
+                        msg = msg + " (right)"
+
                     move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "stop"))
                     move_thread.start()
 
+            # correct direction if target is not centered
             if x_coord < -x_thresh:
                 msg = msg + ", and turn left"
                 move_thread = threading.Thread(target=man_control_thread, args=(server_ip, server_port, "left"))
@@ -858,7 +872,7 @@ def terminate_server(ip,port):
 
 if __name__ == '__main__':
  
-    server_ip = '10.49.1.249'
+    server_ip = '10.49.92.67'
    # server_ip = '127.0.0.1'
     server_port = 12002
     
